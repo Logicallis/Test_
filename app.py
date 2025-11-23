@@ -11,62 +11,59 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- 2. FORCE LIGHT MODE & UX DESIGN (Advanced CSS) ---
-# Ensures the app looks White/Clean (SaaS style) regardless of user's dark mode settings
+# --- 2. FORCE LIGHT THEME & TEXT COLOR (FIX FOR DARK MODE USERS) ---
 st.markdown("""
     <style>
-        /* Force main background to light gray (SaaS style) */
-        [data-testid="stAppViewContainer"] {
-            background-color: #f0f2f6;
+        /* 1. Força o fundo geral a ser claro */
+        .stApp {
+            background-color: #f0f2f6 !important;
         }
         
-        /* Force sidebar to be white */
-        [data-testid="stSidebar"] {
-            background-color: #ffffff;
+        /* 2. Força o fundo da Sidebar a ser branco */
+        section[data-testid="stSidebar"] {
+            background-color: #ffffff !important;
             border-right: 1px solid #e0e0e0;
         }
 
-        /* Style Metric Cards to look like 'widgets' */
-        div[data-testid="stMetric"] {
-            background-color: #ffffff;
-            padding: 20px;
-            border-radius: 10px;
-            border: 1px solid #e0e0e0;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            color: #31333F; /* Dark Text */
+        /* 3. A CORREÇÃO CRÍTICA: Força TODO texto a ser Preto/Cinza Escuro */
+        h1, h2, h3, h4, h5, h6, p, span, div, label {
+            color: #31333F !important;
         }
         
-        /* Force metric text colors */
-        [data-testid="stMetricLabel"] {
-            color: #666;
+        /* 4. Corrige especificamente os textos dentro de inputs e selects */
+        .stSelectbox div, .stSelectbox label {
+            color: #31333F !important;
         }
-        [data-testid="stMetricValue"] {
-            color: #333;
+        
+        /* 5. Estilo dos Cards de Métricas */
+        div[data-testid="stMetric"] {
+            background-color: #ffffff !important;
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
+        
+        /* Força cor dos valores das métricas */
+        [data-testid="stMetricLabel"] { color: #666 !important; }
+        [data-testid="stMetricValue"] { color: #333 !important; }
 
-        /* Button Styling */
+        /* 6. Botão Azul (Mantém texto branco apenas aqui) */
         .stButton>button {
-            width: 100%;
-            background-color: #2563EB; /* Corporate Blue */
-            color: white;
+            background-color: #2563EB !important;
+            color: white !important;
             border: none;
             border-radius: 8px;
             height: 3em;
-            font-weight: 600;
         }
-        .stButton>button:hover {
-            background-color: #1d4ed8;
+        .stButton>button p {
+            color: white !important; /* Garante que o texto do botão seja branco */
         }
         
-        /* Remove excessive top padding */
-        .block-container {
-            padding-top: 2rem;
-        }
+        /* Remove padding do topo */
+        .block-container { padding-top: 2rem; }
     </style>
     """, unsafe_allow_html=True)
 
 # --- Data ---
-# Region names kept in French for API compatibility
 regions = [
     'Île-de-France', 'Nouvelle-Aquitaine', 'Auvergne-Rhône-Alpes',
     'Occitanie', 'Provence-Alpes-Côte d’Azur', 'Hauts-de-France',
@@ -97,8 +94,13 @@ with st.sidebar:
     
     selected_region = st.selectbox("Target Region:", regions)
     
-    st.markdown("###") # Spacing
-    st.info("The model uses demographic and historical traffic data from the selected region to predict severity.")
+    st.markdown("###") 
+    # Usando st.info (que tem cor própria) ou markdown puro
+    st.markdown("""
+    <div style="background-color: #e1f5fe; padding: 10px; border-radius: 5px; border-left: 5px solid #0288d1;">
+        <small>The model uses demographic and historical traffic data from the selected region.</small>
+    </div>
+    """, unsafe_allow_html=True)
     
     st.markdown("###")
     predict_btn = st.button("Analyze Risk ⚡")
@@ -106,11 +108,11 @@ with st.sidebar:
 # --- Color Function ---
 def get_color(probability):
     if probability < 0.3:
-        return [0, 200, 83, 180] # Vibrant Green
+        return [0, 200, 83, 180] 
     elif probability < 0.7:
-        return [255, 179, 0, 180] # Orange/Yellow
+        return [255, 179, 0, 180] 
     else:
-        return [220, 38, 38, 180]   # Alert Red
+        return [220, 38, 38, 180] 
 
 # --- Main App ---
 st.markdown("### 🇫🇷 Road Accident Risk Dashboard")
@@ -120,7 +122,7 @@ st.markdown("---")
 url = "https://dummymodel-114787831451.europe-west1.run.app/predict"
 
 if predict_btn:
-    col1, col2 = st.columns([1, 2]) # 1/3 for data, 2/3 for map
+    col1, col2 = st.columns([1, 2]) 
 
     with st.spinner('Processing data via API...'):
         try:
@@ -129,31 +131,33 @@ if predict_btn:
             prob = result['probability_of_fatality']
             
             coords = region_coords[selected_region]
-            
-            # Dataframe for map
             df_map = pd.DataFrame({'lat': [coords[0]], 'lon': [coords[1]]})
 
             # --- Column 1: KPIs ---
             with col1:
-                st.success("Analysis Complete")
+                # Custom Success Message Box
+                st.markdown("""
+                <div style="background-color: #d4edda; color: #155724; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
+                    <strong>✅ Analysis Complete</strong>
+                </div>
+                """, unsafe_allow_html=True)
                 
                 # Visual Risk Label
                 if prob < 0.3:
-                    st.markdown(f"<h2 style='color: #00c853;'>Low Risk</h2>", unsafe_allow_html=True)
+                    st.markdown(f"<h2 style='color: #00c853 !important;'>Low Risk</h2>", unsafe_allow_html=True)
                 elif prob < 0.7:
-                    st.markdown(f"<h2 style='color: #ffb300;'>Medium Risk</h2>", unsafe_allow_html=True)
+                    st.markdown(f"<h2 style='color: #ffb300 !important;'>Medium Risk</h2>", unsafe_allow_html=True)
                 else:
-                    st.markdown(f"<h2 style='color: #d32f2f;'>Critical Risk</h2>", unsafe_allow_html=True)
+                    st.markdown(f"<h2 style='color: #d32f2f !important;'>Critical Risk</h2>", unsafe_allow_html=True)
 
-                # Metric Card (styled by CSS)
                 st.metric(label="Estimated Fatality Probability", value=f"{prob:.1%}")
                 
                 st.write("Region Details:")
+                # Forcing code block to look okay in light mode
                 st.code(result['region'])
 
             # --- Column 2: MAP ---
             with col2:
-                # Dynamic radius
                 radius = int(30000 + prob * 80000)
                 color = get_color(prob)
 
@@ -169,7 +173,6 @@ if predict_btn:
                     line_width_min_pixels=2,
                 )
 
-                # Map View Settings (Light Style)
                 view_state = pdk.ViewState(
                     latitude=coords[0], 
                     longitude=coords[1], 
@@ -180,7 +183,7 @@ if predict_btn:
                 deck = pdk.Deck(
                     layers=[layer],
                     initial_view_state=view_state,
-                    map_style=pdk.map_styles.LIGHT, # Ensures clean/light background
+                    map_style=pdk.map_styles.LIGHT,
                     tooltip={"text": "Local Risk: " + f"{prob:.2%}"}
                 )
                 
@@ -190,16 +193,15 @@ if predict_btn:
             st.error(f"Connection Error: {e}")
 
 else:
-    # Empty State
-    st.info("👈 Select a region from the sidebar to start.")
+    # Empty State with styled box
+    st.markdown("""
+    <div style="background-color: #fff3cd; color: #856404; padding: 15px; border-radius: 5px; border: 1px solid #ffeeba;">
+        👈 <strong>Start here:</strong> Select a region from the sidebar to visualize risk.
+    </div>
+    """, unsafe_allow_html=True)
     
-    # Default Map of France (Light)
     initial_view = pdk.ViewState(latitude=46.6, longitude=1.8, zoom=5)
     st.pydeck_chart(pdk.Deck(
         initial_view_state=initial_view,
         map_style=pdk.map_styles.LIGHT 
     ))
-    
-    # Mapa inicial mostrando a França inteira
-    initial_view = pdk.ViewState(latitude=46.6, longitude=1.8, zoom=4.5)
-    st.pydeck_chart(pdk.Deck(initial_view_state=initial_view, map_style='pdk.map_styles.ROAD'))
