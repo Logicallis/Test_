@@ -3,67 +3,95 @@ import requests
 import pandas as pd
 import pydeck as pdk
 
-# 1. Page Configuration
+# 1. Configuração da Página
 st.set_page_config(
-    page_title="Safety Analytics France",
+    page_title="SafeRoute France",
     page_icon="🛡️",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed" # Esconde a sidebar
 )
 
-# --- 2. FORCE LIGHT THEME & TEXT COLOR (FIX FOR DARK MODE USERS) ---
+# --- 2. CSS AVANÇADO: TRANSFORMAÇÃO EM WEB APP ---
 st.markdown("""
     <style>
-        /* 1. Força o fundo geral a ser claro */
+        /* RESET GERAL & LIGHT MODE FORÇADO */
         .stApp {
-            background-color: #f0f2f6 !important;
+            background-color: #f8f9fc !important; /* Fundo Cinza Azulado Clean */
         }
         
-        /* 2. Força o fundo da Sidebar a ser branco */
-        section[data-testid="stSidebar"] {
-            background-color: #ffffff !important;
-            border-right: 1px solid #e0e0e0;
-        }
-
-        /* 3. A CORREÇÃO CRÍTICA: Força TODO texto a ser Preto/Cinza Escuro */
-        h1, h2, h3, h4, h5, h6, p, span, div, label {
-            color: #31333F !important;
+        /* ESCONDER ELEMENTOS DE DASHBOARD */
+        [data-testid="stSidebar"] { display: none; } /* Tchau Sidebar */
+        #MainMenu { visibility: hidden; }
+        footer { visibility: hidden; }
+        
+        /* NAVBAR SIMULADA */
+        .navbar {
+            padding: 1rem 0;
+            border-bottom: 1px solid #eaeaea;
+            background: white;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
-        /* 4. Corrige especificamente os textos dentro de inputs e selects */
-        .stSelectbox div, .stSelectbox label {
-            color: #31333F !important;
+        /* HERO SECTION (Área de Input) */
+        .hero-container {
+            text-align: center;
+            padding: 2rem 0;
         }
         
-        /* 5. Estilo dos Cards de Métricas */
-        div[data-testid="stMetric"] {
-            background-color: #ffffff !important;
-            border: 1px solid #e0e0e0;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        /* ESTILO DOS INPUTS (Centralizados e Maiores) */
+        .stSelectbox > div > div {
+            background-color: white !important;
+            border: 1px solid #ddd !important;
+            border-radius: 12px !important;
+            height: 50px;
+            display: flex;
+            align-items: center;
         }
         
-        /* Força cor dos valores das métricas */
-        [data-testid="stMetricLabel"] { color: #666 !important; }
-        [data-testid="stMetricValue"] { color: #333 !important; }
-
-        /* 6. Botão Azul (Mantém texto branco apenas aqui) */
-        .stButton>button {
-            background-color: #2563EB !important;
+        /* BOTÃO DE AÇÃO (CTA) */
+        .stButton > button {
+            background: linear-gradient(90deg, #2563EB 0%, #1E40AF 100%) !important;
             color: white !important;
             border: none;
-            border-radius: 8px;
-            height: 3em;
+            border-radius: 30px; /* Botão Redondo Moderno */
+            padding: 0.5rem 2rem;
+            font-size: 18px;
+            font-weight: bold;
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+            transition: all 0.2s ease;
+            width: 100%;
         }
-        .stButton>button p {
-            color: white !important; /* Garante que o texto do botão seja branco */
+        .stButton > button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+        }
+
+        /* CARD DE RESULTADO */
+        .result-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            margin-top: 2rem;
+            border: 1px solid #eaeaea;
         }
         
-        /* Remove padding do topo */
-        .block-container { padding-top: 2rem; }
+        /* TEXTOS */
+        h1 { color: #111827 !important; font-weight: 800 !important; font-size: 2.5rem !important; text-align: center; }
+        h3 { color: #374151 !important; text-align: center; font-weight: 400 !important; }
+        p, label { color: #4B5563 !important; }
+        
+        /* FORÇAR TEXTO ESCURO NOS METRICS (Fix do Dark Mode) */
+        [data-testid="stMetricLabel"] { color: #6B7280 !important; }
+        [data-testid="stMetricValue"] { color: #111827 !important; }
+        
     </style>
-    """, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
-# --- Data ---
+# --- DADOS ---
 regions = [
     'Île-de-France', 'Nouvelle-Aquitaine', 'Auvergne-Rhône-Alpes',
     'Occitanie', 'Provence-Alpes-Côte d’Azur', 'Hauts-de-France',
@@ -86,122 +114,127 @@ region_coords = {
     'Bretagne': (48.1173, -1.6778)
 }
 
-# --- Sidebar ---
-with st.sidebar:
-    st.title("🛡️ Safety Analytics")
-    st.markdown("---")
-    st.write("**Analysis Configuration**")
-    
-    selected_region = st.selectbox("Target Region:", regions)
-    
-    st.markdown("###") 
-    # Usando st.info (que tem cor própria) ou markdown puro
-    st.markdown("""
-    <div style="background-color: #e1f5fe; padding: 10px; border-radius: 5px; border-left: 5px solid #0288d1;">
-        <small>The model uses demographic and historical traffic data from the selected region.</small>
+# --- NAVBAR (HTML PURO PARA VISUAL) ---
+st.markdown("""
+<div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; background: white; border-bottom: 1px solid #eee; margin: -4rem -4rem 2rem -4rem;">
+    <div style="font-weight: bold; font-size: 20px; color: #2563EB; display: flex; align-items: center;">
+        <span style="font-size: 24px; margin-right: 8px;">🛡️</span> SafeRoute France
     </div>
-    """, unsafe_allow_html=True)
+    <div style="color: #666; font-size: 14px;">AI Risk Assessment Platform</div>
+</div>
+""", unsafe_allow_html=True)
+
+
+# --- HERO SECTION (CENTRALIZADA) ---
+st.markdown("<h1>Check Road Safety instantly</h1>", unsafe_allow_html=True)
+st.markdown("<h3>Select a region below to generate a real-time AI risk assessment.</h3>", unsafe_allow_html=True)
+
+st.write("") # Espaçamento
+st.write("")
+
+# Layout Centralizado: [Espaço Vazio] [Conteúdo] [Espaço Vazio]
+c1, c2, c3 = st.columns([1, 2, 1])
+
+with c2:
+    selected_region = st.selectbox("Choose a Region", regions, label_visibility="collapsed")
     
-    st.markdown("###")
+    st.write("") # Espaçamento pequeno
+    
+    # Botão ocupa a largura da coluna central
     predict_btn = st.button("Analyze Risk ⚡")
 
-# --- Color Function ---
-def get_color(probability):
-    if probability < 0.3:
-        return [0, 200, 83, 180] 
-    elif probability < 0.7:
-        return [255, 179, 0, 180] 
-    else:
-        return [220, 38, 38, 180] 
 
-# --- Main App ---
-st.markdown("### 🇫🇷 Road Accident Risk Dashboard")
-st.markdown("Predictive monitoring of accident severity in French regions.")
-st.markdown("---")
-
-url = "https://dummymodel-114787831451.europe-west1.run.app/predict"
-
+# --- RESULT SECTION (MODERNA) ---
 if predict_btn:
-    col1, col2 = st.columns([1, 2]) 
-
-    with st.spinner('Processing data via API...'):
+    url = "https://dummymodel-114787831451.europe-west1.run.app/predict"
+    
+    with st.spinner('Thinking...'):
         try:
+            # Simulação de delay para parecer que a IA está "pensando" (opcional)
+            # time.sleep(1) 
+            
             response = requests.get(url, params={'region': selected_region}, timeout=5)
             result = response.json()
             prob = result['probability_of_fatality']
-            
             coords = region_coords[selected_region]
-            df_map = pd.DataFrame({'lat': [coords[0]], 'lon': [coords[1]]})
 
-            # --- Column 1: KPIs ---
-            with col1:
-                # Custom Success Message Box
-                st.markdown("""
-                <div style="background-color: #d4edda; color: #155724; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
-                    <strong>✅ Analysis Complete</strong>
-                </div>
-                """, unsafe_allow_html=True)
+            # Container Branco com Sombra (O Card)
+            with st.container():
+                st.markdown("<div class='result-card'>", unsafe_allow_html=True)
                 
-                # Visual Risk Label
-                if prob < 0.3:
-                    st.markdown(f"<h2 style='color: #00c853 !important;'>Low Risk</h2>", unsafe_allow_html=True)
-                elif prob < 0.7:
-                    st.markdown(f"<h2 style='color: #ffb300 !important;'>Medium Risk</h2>", unsafe_allow_html=True)
-                else:
-                    st.markdown(f"<h2 style='color: #d32f2f !important;'>Critical Risk</h2>", unsafe_allow_html=True)
-
-                st.metric(label="Estimated Fatality Probability", value=f"{prob:.1%}")
+                # Cabeçalho do Resultado
+                col_res_1, col_res_2 = st.columns([1, 2])
                 
-                st.write("Region Details:")
-                # Forcing code block to look okay in light mode
-                st.code(result['region'])
+                with col_res_1:
+                    st.markdown("#### Analysis Report")
+                    
+                    # Definição de Cores e Texto
+                    if prob < 0.3:
+                        status_color = "#10B981" # Verde moderno
+                        status_text = "Low Risk Environment"
+                        bg_badge = "#D1FAE5"
+                    elif prob < 0.7:
+                        status_color = "#F59E0B" # Laranja moderno
+                        status_text = "Elevated Caution"
+                        bg_badge = "#FEF3C7"
+                    else:
+                        status_color = "#EF4444" # Vermelho moderno
+                        status_text = "High Danger Zone"
+                        bg_badge = "#FEE2E2"
 
-            # --- Column 2: MAP ---
-            with col2:
-                radius = int(30000 + prob * 80000)
-                color = get_color(prob)
+                    # Badge de Status (HTML/CSS inline para controle total)
+                    st.markdown(f"""
+                        <div style="background-color: {bg_badge}; color: {status_color}; padding: 8px 16px; border-radius: 20px; display: inline-block; font-weight: bold; margin-bottom: 20px;">
+                            {status_text}
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    st.metric("Fatality Probability", f"{prob:.1%}")
+                    
+                    st.caption(f"Region: {result['region']}")
+                    st.caption("Data source: Traffic API v2.1")
 
-                layer = pdk.Layer(
-                    "ScatterplotLayer",
-                    df_map,
-                    get_position='[lon, lat]',
-                    get_fill_color=color,
-                    get_radius=radius,
-                    pickable=True,
-                    stroked=True,
-                    get_line_color=[255, 255, 255],
-                    line_width_min_pixels=2,
-                )
+                with col_res_2:
+                    # Mapa Clean
+                    df_map = pd.DataFrame({'lat': [coords[0]], 'lon': [coords[1]]})
+                    
+                    # Cor do círculo baseada no risco
+                    if prob < 0.3: pdk_color = [16, 185, 129, 160]
+                    elif prob < 0.7: pdk_color = [245, 158, 11, 160]
+                    else: pdk_color = [239, 68, 68, 160]
 
-                view_state = pdk.ViewState(
-                    latitude=coords[0], 
-                    longitude=coords[1], 
-                    zoom=6, 
-                    pitch=0
-                )
+                    layer = pdk.Layer(
+                        "ScatterplotLayer",
+                        df_map,
+                        get_position='[lon, lat]',
+                        get_fill_color=pdk_color,
+                        get_radius=int(30000 + prob * 80000),
+                        pickable=True,
+                        stroked=True,
+                        get_line_color=[255, 255, 255],
+                        line_width_min_pixels=2,
+                    )
 
-                deck = pdk.Deck(
-                    layers=[layer],
-                    initial_view_state=view_state,
-                    map_style=pdk.map_styles.LIGHT,
-                    tooltip={"text": "Local Risk: " + f"{prob:.2%}"}
-                )
+                    view_state = pdk.ViewState(
+                        latitude=coords[0], longitude=coords[1], zoom=5.5, pitch=0
+                    )
+
+                    deck = pdk.Deck(
+                        layers=[layer],
+                        initial_view_state=view_state,
+                        map_style=pdk.map_styles.LIGHT,
+                        tooltip={"text": f"Risk: {prob:.1%}"}
+                    )
+                    st.pydeck_chart(deck)
                 
-                st.pydeck_chart(deck)
+                st.markdown("</div>", unsafe_allow_html=True) # Fecha o card
 
         except Exception as e:
-            st.error(f"Connection Error: {e}")
+            st.error("Could not connect to the AI model. Please try again later.")
 
-else:
-    # Empty State with styled box
-    st.markdown("""
-    <div style="background-color: #fff3cd; color: #856404; padding: 15px; border-radius: 5px; border: 1px solid #ffeeba;">
-        👈 <strong>Start here:</strong> Select a region from the sidebar to visualize risk.
-    </div>
-    """, unsafe_allow_html=True)
-    
-    initial_view = pdk.ViewState(latitude=46.6, longitude=1.8, zoom=5)
-    st.pydeck_chart(pdk.Deck(
-        initial_view_state=initial_view,
-        map_style=pdk.map_styles.LIGHT 
-    ))
+# --- FOOTER ---
+st.markdown("""
+<div style="text-align: center; margin-top: 50px; color: #aaa; font-size: 12px;">
+    &copy; 2024 Safety Analytics Inc. • <a href="#" style="color: #aaa;">Privacy</a> • <a href="#" style="color: #aaa;">Terms</a>
+</div>
+""", unsafe_allow_html=True)
