@@ -2,92 +2,87 @@ import streamlit as st
 import requests
 import pandas as pd
 import pydeck as pdk
+import time
 
-# 1. Configuração da Página
+# --- 1. CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
     page_title="SafeRoute France",
     page_icon="🛡️",
     layout="wide",
-    initial_sidebar_state="collapsed" # Esconde a sidebar
+    initial_sidebar_state="collapsed"
 )
 
-# --- 2. CSS AVANÇADO: TRANSFORMAÇÃO EM WEB APP ---
+# --- 2. CSS "CANVAS" & UX DESIGN ---
 st.markdown("""
     <style>
-        /* RESET GERAL & LIGHT MODE FORÇADO */
-        .stApp {
-            background-color: #f8f9fc !important; /* Fundo Cinza Azulado Clean */
-        }
-        
-        /* ESCONDER ELEMENTOS DE DASHBOARD */
-        [data-testid="stSidebar"] { display: none; } /* Tchau Sidebar */
-        #MainMenu { visibility: hidden; }
-        footer { visibility: hidden; }
-        
-        /* NAVBAR SIMULADA */
-        .navbar {
-            padding: 1rem 0;
-            border-bottom: 1px solid #eaeaea;
-            background: white;
-            margin-bottom: 2rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        /* HERO SECTION (Área de Input) */
-        .hero-container {
-            text-align: center;
-            padding: 2rem 0;
-        }
-        
-        /* ESTILO DOS INPUTS (Centralizados e Maiores) */
-        .stSelectbox > div > div {
-            background-color: white !important;
-            border: 1px solid #ddd !important;
-            border-radius: 12px !important;
-            height: 50px;
-            display: flex;
-            align-items: center;
-        }
-        
-        /* BOTÃO DE AÇÃO (CTA) */
-        .stButton > button {
-            background: linear-gradient(90deg, #2563EB 0%, #1E40AF 100%) !important;
-            color: white !important;
-            border: none;
-            border-radius: 30px; /* Botão Redondo Moderno */
-            padding: 0.5rem 2rem;
-            font-size: 18px;
-            font-weight: bold;
-            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
-            transition: all 0.2s ease;
-            width: 100%;
-        }
-        .stButton > button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+        /* --- ANIMAÇÃO DE FUNDO (O Efeito Canvas) --- */
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
 
-        /* CARD DE RESULTADO */
-        .result-card {
-            background: white;
+        .stApp {
+            /* Fundo Gradiente Animado Moderno */
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* --- REMOVER ELEMENTOS PADRÃO --- */
+        [data-testid="stSidebar"] { display: none; }
+        #MainMenu { visibility: hidden; }
+        footer { visibility: hidden; }
+        [data-testid="stHeader"] { background-color: rgba(0,0,0,0); } /* Header Transparente */
+
+        /* --- GLASSMORPHISM CONTAINER (O Efeito de Vidro) --- */
+        .glass-container {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
             padding: 2rem;
-            border-radius: 16px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-            margin-top: 2rem;
-            border: 1px solid #eaeaea;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+            margin-bottom: 2rem;
+        }
+
+        /* --- TYPOGRAPHY --- */
+        h1 { color: #1e293b !important; font-weight: 800 !important; letter-spacing: -1px; }
+        h3 { color: #475569 !important; font-weight: 500 !important; }
+        
+        /* --- INPUT STYLING --- */
+        .stSelectbox > div > div {
+            background-color: white !important;
+            border: 2px solid #e2e8f0 !important;
+            border-radius: 12px !important;
+            color: #333 !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        /* --- BOTÃO MODERNIZADO --- */
+        .stButton > button {
+            background: #111827 !important; /* Preto Clean estilo Vercel/Apple */
+            color: white !important;
+            border: none;
+            border-radius: 12px;
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+            width: 100%;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        .stButton > button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            background: #000000 !important;
         }
         
-        /* TEXTOS */
-        h1 { color: #111827 !important; font-weight: 800 !important; font-size: 2.5rem !important; text-align: center; }
-        h3 { color: #374151 !important; text-align: center; font-weight: 400 !important; }
-        p, label { color: #4B5563 !important; }
-        
-        /* FORÇAR TEXTO ESCURO NOS METRICS (Fix do Dark Mode) */
-        [data-testid="stMetricLabel"] { color: #6B7280 !important; }
-        [data-testid="stMetricValue"] { color: #111827 !important; }
-        
+        /* --- METRIC FIX --- */
+        [data-testid="stMetricLabel"] { color: #64748b !important; font-size: 14px !important; }
+        [data-testid="stMetricValue"] { color: #0f172a !important; font-size: 36px !important; font-weight: 700 !important; }
+
     </style>
 """, unsafe_allow_html=True)
 
@@ -114,127 +109,128 @@ region_coords = {
     'Bretagne': (48.1173, -1.6778)
 }
 
-# --- NAVBAR (HTML PURO PARA VISUAL) ---
-st.markdown("""
-<div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; background: white; border-bottom: 1px solid #eee; margin: -4rem -4rem 2rem -4rem;">
-    <div style="font-weight: bold; font-size: 20px; color: #2563EB; display: flex; align-items: center;">
-        <span style="font-size: 24px; margin-right: 8px;">🛡️</span> SafeRoute France
-    </div>
-    <div style="color: #666; font-size: 14px;">AI Risk Assessment Platform</div>
-</div>
-""", unsafe_allow_html=True)
+# --- LAYOUT PRINCIPAL (CONTAINER FLUTUANTE) ---
 
+# Cria um container centralizado com efeito de vidro
+st.markdown("<div class='glass-container'>", unsafe_allow_html=True)
 
-# --- HERO SECTION (CENTRALIZADA) ---
-st.markdown("<h1>Check Road Safety instantly</h1>", unsafe_allow_html=True)
-st.markdown("<h3>Select a region below to generate a real-time AI risk assessment.</h3>", unsafe_allow_html=True)
+# Navbar Minimalista dentro do container
+c_logo, c_badge = st.columns([3, 1])
+with c_logo:
+    st.markdown("<div style='font-size: 24px; font-weight: 800; color: #2563EB;'>🛡️ SafeRoute <span style='color: #94a3b8;'>France</span></div>", unsafe_allow_html=True)
+with c_badge:
+    st.markdown("<div style='text-align: right; color: #64748b; font-size: 12px; border: 1px solid #cbd5e1; padding: 4px 8px; border-radius: 20px; display: inline-block;'>v2.1 Live</div>", unsafe_allow_html=True)
 
-st.write("") # Espaçamento
-st.write("")
+st.divider()
 
-# Layout Centralizado: [Espaço Vazio] [Conteúdo] [Espaço Vazio]
-c1, c2, c3 = st.columns([1, 2, 1])
+st.markdown("<h1 style='text-align: center; margin-top: 1rem;'>Real-time Risk Analysis</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #64748b; margin-bottom: 2rem;'>AI-powered safety assessment for French regions.</p>", unsafe_allow_html=True)
 
-with c2:
-    selected_region = st.selectbox("Choose a Region", regions, label_visibility="collapsed")
-    
-    st.write("") # Espaçamento pequeno
-    
-    # Botão ocupa a largura da coluna central
-    predict_btn = st.button("Analyze Risk ⚡")
+# Área de Input Otimizada
+col_input_1, col_input_2, col_input_3 = st.columns([1, 2, 1])
+with col_input_2:
+    selected_region = st.selectbox("Select Region", regions, label_visibility="collapsed")
+    st.write("") # Spacer
+    predict_btn = st.button("Analyze Safety Levels ✨")
 
+st.markdown("</div>", unsafe_allow_html=True) # Fecha Container de Input
 
-# --- RESULT SECTION (MODERNA) ---
+# --- RESULTADOS ---
 if predict_btn:
+    # Placeholder para manter layout enquanto carrega
+    result_placeholder = st.empty()
+    
     url = "https://dummymodel-114787831451.europe-west1.run.app/predict"
     
-    with st.spinner('Thinking...'):
+    with st.spinner('Running AI risk models...'):
         try:
-            # Simulação de delay para parecer que a IA está "pensando" (opcional)
-            # time.sleep(1) 
+            # time.sleep(1.5) # Descomente para ver a animação de loading
+            response = requests.get(url, params={'region': selected_region}, timeout=8)
             
-            response = requests.get(url, params={'region': selected_region}, timeout=5)
-            result = response.json()
-            prob = result['probability_of_fatality']
-            coords = region_coords[selected_region]
-
-            # Container Branco com Sombra (O Card)
-            with st.container():
-                st.markdown("<div class='result-card'>", unsafe_allow_html=True)
+            if response.status_code == 200:
+                result = response.json()
+                prob = result['probability_of_fatality']
+                coords = region_coords[selected_region]
                 
-                # Cabeçalho do Resultado
-                col_res_1, col_res_2 = st.columns([1, 2])
-                
-                with col_res_1:
-                    st.markdown("#### Analysis Report")
-                    
-                    # Definição de Cores e Texto
-                    if prob < 0.3:
-                        status_color = "#10B981" # Verde moderno
-                        status_text = "Low Risk Environment"
-                        bg_badge = "#D1FAE5"
-                    elif prob < 0.7:
-                        status_color = "#F59E0B" # Laranja moderno
-                        status_text = "Elevated Caution"
-                        bg_badge = "#FEF3C7"
-                    else:
-                        status_color = "#EF4444" # Vermelho moderno
-                        status_text = "High Danger Zone"
-                        bg_badge = "#FEE2E2"
+                # Lógica de Cores UX
+                if prob < 0.3:
+                    color_hex = "#10B981" # Verde
+                    risk_label = "SAFE"
+                    msg = "Low risk detected."
+                elif prob < 0.7:
+                    color_hex = "#F59E0B" # Laranja
+                    risk_label = "MODERATE"
+                    msg = "Exercise caution."
+                else:
+                    color_hex = "#EF4444" # Vermelho
+                    risk_label = "CRITICAL"
+                    msg = "High danger zone."
 
-                    # Badge de Status (HTML/CSS inline para controle total)
-                    st.markdown(f"""
-                        <div style="background-color: {bg_badge}; color: {status_color}; padding: 8px 16px; border-radius: 20px; display: inline-block; font-weight: bold; margin-bottom: 20px;">
-                            {status_text}
+                # --- NOVO CARD DE RESULTADO ---
+                st.markdown(f"""
+                <div class='glass-container' style='border-left: 8px solid {color_hex};'>
+                    <div style='display: flex; justify-content: space-between; align-items: center;'>
+                        <div>
+                            <h4 style='margin:0; color: #64748b;'>Assessment Report</h4>
+                            <h2 style='margin:0; color: {color_hex};'>{risk_label}</h2>
+                            <p style='margin:0; color: #334155;'>{msg}</p>
                         </div>
-                    """, unsafe_allow_html=True)
-                    
-                    st.metric("Fatality Probability", f"{prob:.1%}")
-                    
-                    st.caption(f"Region: {result['region']}")
-                    st.caption("Data source: Traffic API v2.1")
-
-                with col_res_2:
-                    # Mapa Clean
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Layout Métricas + Mapa
+                c_metrics, c_map = st.columns([1, 2])
+                
+                with c_metrics:
+                     # Usando container nativo do Streamlit para métricas para manter responsividade
+                    with st.container():
+                        st.metric("Fatality Probability", f"{prob:.1%}", delta=None)
+                        st.divider()
+                        st.markdown(f"**Region:** {result['region']}")
+                        st.markdown(f"**Lat/Lon:** {coords[0]:.2f}, {coords[1]:.2f}")
+                
+                with c_map:
+                    # Mapa PyDeck refinado
                     df_map = pd.DataFrame({'lat': [coords[0]], 'lon': [coords[1]]})
                     
-                    # Cor do círculo baseada no risco
-                    if prob < 0.3: pdk_color = [16, 185, 129, 160]
-                    elif prob < 0.7: pdk_color = [245, 158, 11, 160]
-                    else: pdk_color = [239, 68, 68, 160]
+                    # Converter cor HEX para RGB Array para PyDeck
+                    rgb_color = [int(color_hex[1:3], 16), int(color_hex[3:5], 16), int(color_hex[5:7], 16), 180]
 
                     layer = pdk.Layer(
                         "ScatterplotLayer",
                         df_map,
                         get_position='[lon, lat]',
-                        get_fill_color=pdk_color,
-                        get_radius=int(30000 + prob * 80000),
+                        get_fill_color=rgb_color,
+                        get_radius=int(30000 + prob * 50000),
                         pickable=True,
                         stroked=True,
                         get_line_color=[255, 255, 255],
-                        line_width_min_pixels=2,
+                        line_width_min_pixels=3,
+                        filled=True
                     )
 
                     view_state = pdk.ViewState(
-                        latitude=coords[0], longitude=coords[1], zoom=5.5, pitch=0
+                        latitude=coords[0], longitude=coords[1], zoom=6, pitch=30
                     )
 
                     deck = pdk.Deck(
                         layers=[layer],
                         initial_view_state=view_state,
                         map_style=pdk.map_styles.LIGHT,
-                        tooltip={"text": f"Risk: {prob:.1%}"}
+                        tooltip={"text": "Risk Level: {prob:.1%}"}
                     )
                     st.pydeck_chart(deck)
-                
-                st.markdown("</div>", unsafe_allow_html=True) # Fecha o card
+
+            else:
+                st.error("Server Error. Please try again.")
 
         except Exception as e:
-            st.error("Could not connect to the AI model. Please try again later.")
+            st.error(f"Connection failed. Details: {e}")
 
-# --- FOOTER ---
+# --- FOOTER DISCRETO ---
 st.markdown("""
-<div style="text-align: center; margin-top: 50px; color: #aaa; font-size: 12px;">
-    &copy; 2024 Safety Analytics Inc. • <a href="#" style="color: #aaa;">Privacy</a> • <a href="#" style="color: #aaa;">Terms</a>
+<div style="text-align: center; margin-top: 2rem; color: rgba(255,255,255,0.6); font-size: 12px;">
+    SafeRoute AI © 2024
 </div>
 """, unsafe_allow_html=True)
